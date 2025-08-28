@@ -10,6 +10,7 @@ import (
 	"github.com/mhandyalf/go-passmanager/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -27,7 +28,7 @@ func Register(c *gin.Context) {
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(input.Password), 14)
 
-	user := models.User{Email: input.Email, Password: string(hashed)}
+	user := models.User{ID: uuid.New(), UserName: input.UserName, Email: input.Email, Password: string(hashed)}
 	database.DB.Create(&user)
 
 	c.JSON(http.StatusOK, gin.H{"message": "registered successfully"})
@@ -35,7 +36,7 @@ func Register(c *gin.Context) {
 
 func Login(c *gin.Context) {
 	var input struct {
-		Email    string `json:"email"`
+		UserName string `json:"username"`
 		Password string `json:"password"`
 	}
 
@@ -45,9 +46,9 @@ func Login(c *gin.Context) {
 	}
 
 	var user models.User
-	database.DB.Where("email = ?", input.Email).First(&user)
+	database.DB.Where("email = ?", input.UserName).First(&user)
 
-	if user.ID == 0 {
+	if user.ID == uuid.Nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"}) // Ganti ke StatusUnauthorized
 		return
 	}

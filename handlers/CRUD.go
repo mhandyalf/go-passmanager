@@ -1,18 +1,19 @@
-// handlers/password.go
 package handlers
 
 import (
+	"net/http"
+
+	"github.com/google/uuid"
 	"github.com/mhandyalf/go-passmanager/database"
 	"github.com/mhandyalf/go-passmanager/models"
 	"github.com/mhandyalf/go-passmanager/utils" // Buat file baru untuk fungsi enkripsi
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 // CreatePassword ...
 func CreatePassword(c *gin.Context) {
-	userID := c.MustGet("user_id").(uint)
+	userID := c.MustGet("user_id").(uuid.UUID)
 	var input struct {
 		Title    string `json:"title" binding:"required"`
 		Username string `json:"username"`
@@ -53,7 +54,7 @@ func GetPasswords(c *gin.Context) {
 
 // UpdatePassword ...
 func UpdatePassword(c *gin.Context) {
-	userID := c.MustGet("user_id").(uint)
+	userID := c.MustGet("user_id").(uuid.UUID)
 	var input models.Password
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -87,7 +88,7 @@ func UpdatePassword(c *gin.Context) {
 
 // DeletePassword ...
 func DeletePassword(c *gin.Context) {
-	userID := c.MustGet("user_id").(uint)
+	userID := c.MustGet("user_id").(uuid.UUID)
 	var password models.Password
 
 	if err := database.DB.First(&password, c.Param("id")).Error; err != nil {
