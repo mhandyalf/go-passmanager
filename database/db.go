@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/mhandyalf/go-passmanager/models"
 	"gorm.io/driver/postgres"
@@ -14,34 +16,45 @@ import (
 var DB *gorm.DB
 
 func ConnectDB() {
-	// Buat string koneksi DSN (Data Source Name)
 	dsn := os.Getenv("DB_POSTGRES")
+	fmt.Printf(">>> Connecting to database...\n")
 
-	// Debug print dulu sebelum connect
-	fmt.Printf(">>> DSN raw from env: %q\n", dsn)
-
-	// Buka koneksi ke database PostgreSQL
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	// Konfigurasi GORM yang aman
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		PrepareStmt:                              false, // Disable prepared statements untuk menghindari konflik
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
 	if err != nil {
 		log.Fatalf("failed to connect to PostgreSQL database: %v", err)
 	}
 
-	fmt.Printf("%q\n", dsn)
-	// Assign koneksi ke variabel global DB
+	// Set connection pool
+	sqlDB, err := db.DB()
+	if err == nil {
+		sqlDB.SetMaxIdleConns(10)
+		sqlDB.SetMaxOpenConns(100)
+		sqlDB.SetConnMaxLifetime(time.Hour)
+	}
+
 	DB = db
 	log.Println("Successfully connected to PostgreSQL database!")
 
-	// Migrasi model ke database
+	// Migrasi dengan error handling yang lebih baik
 	migrateDatabase()
 }
 
-// migrateDatabase akan memigrasi semua model ke database
 func migrateDatabase() {
 	log.Println("Migrating database...")
-	// Gunakan AutoMigrate untuk membuat atau memperbarui tabel
+
 	err := DB.AutoMigrate(&models.User{}, &models.Password{})
 	if err != nil {
+		// Jika error tapi hanya karena tabel sudah ada, abaikan
+		if strings.Contains(err.Error(), "already exists") {
+			log.Println("Tables already exist, migration skipped")
+			return
+		}
 		log.Fatalf("failed to migrate database: %v", err)
 	}
+
 	log.Println("Database migration completed!")
 }

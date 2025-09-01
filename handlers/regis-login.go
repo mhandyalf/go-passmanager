@@ -36,42 +36,40 @@ func Register(c *gin.Context) {
 
 func Login(c *gin.Context) {
 	var input struct {
-		UserName string `json:"username"`
-		Password string `json:"password"`
+		Username string `json:"username" binding:"required"` // Changed from UserName
+		Password string `json:"password" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: " + err.Error()})
 		return
 	}
 
 	var user models.User
-	database.DB.Where("email = ?", input.UserName).First(&user)
-
-	if user.ID == uuid.Nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"}) // Ganti ke StatusUnauthorized
+	// Query berdasarkan username saja, atau jika mau fleksibel bisa email OR username
+	result := database.DB.Where("user_name = ?", input.Username).First(&user)
+	if result.Error != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
 
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"}) // Ganti ke StatusUnauthorized
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
 
-	// Buat token JWT
+	// Generate JWT token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
-		"exp":     time.Now().Add(time.Hour * 24).Unix(), // Token berlaku 24 jam
+		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 
-	// Tandatangani token dengan secret key
 	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
 	}
 
-	// Kirim token ke klien
 	c.JSON(http.StatusOK, gin.H{"token": tokenString})
 }
