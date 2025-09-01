@@ -35,7 +35,4 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            docker pull mhandyalf/go-passmanager:latest
-            docker stop go-passmanager || true
-            docker rm go-passmanager || true
-            docker run -d --name go-passmanager -p 80:80 mhandyalf/go-passmanager:latest
+           /myproject/compose.sh
