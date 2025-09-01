@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -14,6 +15,8 @@ import (
 // CreatePassword ...
 func CreatePassword(c *gin.Context) {
 	userID := c.MustGet("user_id").(uuid.UUID)
+	log.Printf("[CreatePassword] user_id=%s", userID)
+
 	var input struct {
 		Title    string `json:"title" binding:"required"`
 		Username string `json:"username"`
@@ -22,15 +25,19 @@ func CreatePassword(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
+		log.Printf("[CreatePassword][ERROR] Failed to bind JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("[CreatePassword] Input parsed: title=%s username=%s tags=%s", input.Title, input.Username, input.Tags)
 
 	encryptedPassword, err := utils.EncryptAES(input.Password)
 	if err != nil {
+		log.Printf("[CreatePassword][ERROR] Failed to encrypt password: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt password"})
 		return
 	}
+	log.Println("[CreatePassword] Password encrypted successfully")
 
 	password := models.Password{
 		Title:             input.Title,
@@ -40,7 +47,12 @@ func CreatePassword(c *gin.Context) {
 		UserID:            userID,
 	}
 
-	database.DB.Create(&password)
+	if err := database.DB.Create(&password).Error; err != nil {
+		log.Printf("[CreatePassword][ERROR] Failed to insert into DB: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save password"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": password})
 }
 
