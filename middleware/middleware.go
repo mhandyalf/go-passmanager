@@ -1,12 +1,14 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 )
 
 func AuthMiddleware() gin.HandlerFunc {
@@ -37,8 +39,30 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Simpan user_id ke context
-		c.Set("user_id", uint(claims["user_id"].(float64)))
+		// Fix: Convert ke UUID
+		userIDClaim := claims["user_id"]
+		var userID uuid.UUID
+
+		// Handle different claim types
+		switch v := userIDClaim.(type) {
+		case string:
+			userID, err = uuid.Parse(v)
+		case float64:
+			// Convert float64 ke UUID (kalau JWT claim masih number)
+			userID, err = uuid.Parse(fmt.Sprintf("%.0f", v))
+		default:
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user_id format"})
+			c.Abort()
+			return
+		}
+
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user_id"})
+			c.Abort()
+			return
+		}
+
+		c.Set("user_id", userID) // Set sebagai UUID
 		c.Next()
 	}
 }
