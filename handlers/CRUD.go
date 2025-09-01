@@ -46,7 +46,7 @@ func CreatePassword(c *gin.Context) {
 
 // GetPasswords ...
 func GetPasswords(c *gin.Context) {
-	userID := c.MustGet("user_id").(uint)
+	userID := c.MustGet("user_id").(uuid.UUID)
 	var passwords []models.Password
 	database.DB.Where("user_id = ?", userID).Find(&passwords)
 	c.JSON(http.StatusOK, gin.H{"data": passwords})
