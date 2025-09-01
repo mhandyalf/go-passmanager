@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -61,6 +62,17 @@ func GetPasswords(c *gin.Context) {
 	userID := c.MustGet("user_id").(uuid.UUID)
 	var passwords []models.Password
 	database.DB.Where("user_id = ?", userID).Find(&passwords)
+
+	// decrypt password sebelum dikirim
+	for i := range passwords {
+		decrypted, err := utils.DecryptAES(passwords[i].EncryptedPassword)
+		if err != nil {
+			fmt.Printf("Failed to decrypt password: %v\n", err)
+			continue
+		}
+		passwords[i].EncryptedPassword = decrypted
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": passwords})
 }
 
