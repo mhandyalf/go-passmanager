@@ -52,4 +52,7 @@ type Password struct {
 	// Foreign Key
 	UserID uuid.UUID `gorm:"type:uuid;not null;index" json:"-"`
 	User   User      `gorm:"constraint:OnDelete:CASCADE" json:"-"`
+
+	// Virtual field (ignored by GORM, hanya untuk response JSON)
+	DecryptedPassword string `gorm:"-" json:"decrypted_password,omitempty"`
 }
