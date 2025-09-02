@@ -25,6 +25,9 @@ func SetupRouter() *gin.Engine {
 			"http://127.0.0.1:5173",
 			"http://38.47.176.19",    // akses lewat IP
 			"http://38.47.176.19:80", // kalau spesifik port
+			// ✅ Tambahkan domain FE kamu
+			"http://gembolspwmanager.online",
+			"https://gembolspwmanager.online",
 		},
 		AllowMethods: []string{
 			"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS",
