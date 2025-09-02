@@ -23,6 +23,8 @@ func SetupRouter() *gin.Engine {
 			"http://127.0.0.1:3000",
 			"http://127.0.0.1:8081",
 			"http://127.0.0.1:5173",
+			"http://38.47.176.19",    // akses lewat IP
+			"http://38.47.176.19:80", // kalau spesifik port
 		},
 		AllowMethods: []string{
 			"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS",
