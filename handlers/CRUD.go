@@ -78,7 +78,8 @@ func GetPasswords(c *gin.Context) {
 // UpdatePassword ...
 func UpdatePassword(c *gin.Context) {
 	userID := c.MustGet("user_id").(uuid.UUID)
-	var input models.Password
+
+	var input models.UpdatePasswordInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -95,17 +96,26 @@ func UpdatePassword(c *gin.Context) {
 		return
 	}
 
-	// Perbarui password jika ada di input
-	if input.EncryptedPassword != "" {
-		encryptedPassword, err := utils.EncryptAES(input.EncryptedPassword)
+	updates := map[string]interface{}{
+		"title":    input.Title,
+		"username": input.Username,
+		"tags":     input.Tags,
+	}
+
+	if input.Password != "" {
+		encryptedPassword, err := utils.EncryptAES(input.Password)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt password"})
 			return
 		}
-		input.EncryptedPassword = encryptedPassword
+		updates["encrypted_password"] = encryptedPassword
 	}
 
-	database.DB.Model(&password).Updates(input)
+	if err := database.DB.Model(&password).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update password"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": password})
 }
 

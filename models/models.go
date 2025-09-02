@@ -56,3 +56,10 @@ type Password struct {
 	// Virtual field (ignored by GORM, hanya untuk response JSON)
 	DecryptedPassword string `gorm:"-" json:"decrypted_password,omitempty"`
 }
+
+type UpdatePasswordInput struct {
+	Title    string `json:"title"`
+	Username string `json:"username"`
+	Password string `json:"password"` // plain password dari FE
+	Tags     string `json:"tags"`
+}
