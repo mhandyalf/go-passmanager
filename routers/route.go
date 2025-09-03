@@ -28,6 +28,7 @@ func SetupRouter() *gin.Engine {
 			// akses lewat IP VPS (optional, kalau dipakai langsung)
 			"http://38.47.176.19",
 			"http://38.47.176.19:8081",
+			"http://38.47.176.19:8080",
 
 			// domain frontend
 			"http://gembolspwmanager.online",
