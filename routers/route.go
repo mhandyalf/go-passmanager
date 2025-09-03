@@ -17,15 +17,19 @@ func SetupRouter() *gin.Engine {
 	// CORS Configuration
 	r.Use(cors.New(cors.Config{
 		AllowOrigins: []string{
-			"http://localhost:3000", // React default
-			"http://localhost:8081", // Vue default
-			"http://localhost:5173", // Vite default
+			// local dev
+			"http://localhost:3000",
+			"http://localhost:8081",
+			"http://localhost:5173",
 			"http://127.0.0.1:3000",
 			"http://127.0.0.1:8081",
 			"http://127.0.0.1:5173",
-			"http://38.47.176.19",    // akses lewat IP
-			"http://38.47.176.19:80", // kalau spesifik port
-			// ✅ Tambahkan domain FE kamu
+
+			// akses lewat IP VPS (optional, kalau dipakai langsung)
+			"http://38.47.176.19",
+			"http://38.47.176.19:8081",
+
+			// domain frontend
 			"http://gembolspwmanager.online",
 			"https://gembolspwmanager.online",
 		},
