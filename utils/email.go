@@ -16,7 +16,7 @@ func SendResetEmail(to string, token string) error {
 	addr := host + ":" + port
 
 	// Reset password link
-	link := fmt.Sprintf("https://yourapp.com/reset-password?token=%s", token)
+	link := fmt.Sprintf("https://gembolspwmanager.online/reset-password?token=%s", token)
 
 	// Email message (minimalis, bisa kamu tambahin HTML)
 	message := []byte(fmt.Sprintf(
