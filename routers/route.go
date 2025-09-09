@@ -53,6 +53,10 @@ func SetupRouter() *gin.Engine {
 	r.POST("/api/register", handlers.Register)
 	r.POST("/api/login", handlers.Login)
 
+	// Rute publik (ForgotPassword, ResetPassword)
+	r.POST("/api/forgot-password", handlers.ForgotPassword)
+	r.POST("/api/reset-password", handlers.ResetPassword)
+
 	// Rute yang butuh otentikasi
 	api := r.Group("/api")
 	api.Use(middleware.AuthMiddleware())
