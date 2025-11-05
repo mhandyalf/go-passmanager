@@ -13,9 +13,10 @@ import (
 
 func SetupRouter() *gin.Engine {
 	database.ConnectDB()
-	// initialize repository and wire to handlers
-	repo := repository.NewPasswordRepository(database.DB)
-	handlers.InitHandlers(repo)
+	// initialize repositories and wire to handlers
+	pwdRepo := repository.NewPasswordRepository(database.DB)
+	userRepo := repository.NewUserRepository(database.DB)
+	handlers.InitHandlers(pwdRepo, userRepo)
 	r := gin.Default()
 
 	// CORS Configuration

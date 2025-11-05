@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
-	"github.com/mhandyalf/go-passmanager/database"
 	"github.com/mhandyalf/go-passmanager/models"
 	"github.com/mhandyalf/go-passmanager/utils"
 
@@ -30,7 +29,10 @@ func Register(c *gin.Context) {
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(input.Password), 14)
 
 	user := models.User{ID: uuid.New(), UserName: input.UserName, Email: input.Email, Password: string(hashed)}
-	database.DB.Create(&user)
+	if err := userRepo.Create(&user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to register user"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "registered successfully"})
 }
@@ -46,16 +48,13 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	// Query berdasarkan username saja, atau jika mau fleksibel bisa email OR username
-	result := database.DB.Where("user_name = ?", input.Username).First(&user)
-	if result.Error != nil {
+	user, err := userRepo.GetByUsername(input.Username)
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
 
-	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password))
-	if err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
@@ -86,8 +85,8 @@ func ForgotPassword(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	if err := database.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
+	user, err := userRepo.GetByEmail(input.Email)
+	if err != nil {
 		// Tetap balas sukses biar aman
 		c.JSON(http.StatusOK, gin.H{"message": "If this email exists, a reset link has been sent"})
 		return
@@ -106,7 +105,7 @@ func ForgotPassword(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to send email"})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{"message": "If this email exists, a reset link has been sent"})
 }
 
@@ -133,15 +132,18 @@ func ResetPassword(c *gin.Context) {
 
 	userID := claims["user_id"].(string)
 
-	var user models.User
-	if err := database.DB.First(&user, "id = ?", userID).Error; err != nil {
+	user, err := userRepo.GetByID(userID)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(input.NewPassword), 14)
 	user.Password = string(hashed)
-	database.DB.Save(&user)
+	if err := userRepo.Update(user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update password"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "password reset successful"})
 }
