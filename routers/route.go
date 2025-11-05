@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mhandyalf/go-passmanager/database"
 	handlers "github.com/mhandyalf/go-passmanager/handlers"
-	"github.com/mhandyalf/go-passmanager/repository"
 	middleware "github.com/mhandyalf/go-passmanager/middleware"
+	"github.com/mhandyalf/go-passmanager/repository"
 )
 
 func SetupRouter() *gin.Engine {
