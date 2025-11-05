@@ -7,11 +7,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mhandyalf/go-passmanager/database"
 	handlers "github.com/mhandyalf/go-passmanager/handlers"
+	"github.com/mhandyalf/go-passmanager/repository"
 	middleware "github.com/mhandyalf/go-passmanager/middleware"
 )
 
 func SetupRouter() *gin.Engine {
 	database.ConnectDB()
+	// initialize repository and wire to handlers
+	repo := repository.NewPasswordRepository(database.DB)
+	handlers.InitHandlers(repo)
 	r := gin.Default()
 
 	// CORS Configuration

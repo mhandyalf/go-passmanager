@@ -6,12 +6,19 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/mhandyalf/go-passmanager/database"
 	"github.com/mhandyalf/go-passmanager/models"
+	"github.com/mhandyalf/go-passmanager/repository"
 	"github.com/mhandyalf/go-passmanager/utils" // Buat file baru untuk fungsi enkripsi
 
 	"github.com/gin-gonic/gin"
 )
+
+var pwdRepo repository.PasswordRepository
+
+// InitHandlers initializes handler-level dependencies (repository, etc.)
+func InitHandlers(r repository.PasswordRepository) {
+	pwdRepo = r
+}
 
 // CreatePassword ...
 func CreatePassword(c *gin.Context) {
@@ -48,7 +55,7 @@ func CreatePassword(c *gin.Context) {
 		UserID:            userID,
 	}
 
-	if err := database.DB.Create(&password).Error; err != nil {
+	if err := pwdRepo.Create(&password); err != nil {
 		log.Printf("[CreatePassword][ERROR] Failed to insert into DB: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save password"})
 		return
@@ -60,8 +67,12 @@ func CreatePassword(c *gin.Context) {
 // GetPasswords ...
 func GetPasswords(c *gin.Context) {
 	userID := c.MustGet("user_id").(uuid.UUID)
-	var passwords []models.Password
-	database.DB.Where("user_id = ?", userID).Find(&passwords)
+	passwords, err := pwdRepo.GetByUserID(userID)
+	if err != nil {
+		log.Printf("[GetPasswords][ERROR] Failed to fetch passwords: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch passwords"})
+		return
+	}
 
 	for i := range passwords {
 		decrypted, err := utils.DecryptAES(passwords[i].EncryptedPassword)
@@ -85,11 +96,13 @@ func UpdatePassword(c *gin.Context) {
 		return
 	}
 
-	var password models.Password
-	if err := database.DB.First(&password, c.Param("id")).Error; err != nil {
+	var password *models.Password
+	p, err := pwdRepo.GetByID(c.Param("id"))
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Password not found"})
 		return
 	}
+	password = p
 
 	if password.UserID != userID {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized access"})
@@ -111,29 +124,39 @@ func UpdatePassword(c *gin.Context) {
 		updates["encrypted_password"] = encryptedPassword
 	}
 
-	if err := database.DB.Model(&password).Updates(updates).Error; err != nil {
+	if err := pwdRepo.Update(password, updates); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update password"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": password})
+	// reload to return fresh data
+	updated, err := pwdRepo.GetByID(fmt.Sprint(password.ID))
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"data": password})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": updated})
 }
 
 // DeletePassword ...
 func DeletePassword(c *gin.Context) {
 	userID := c.MustGet("user_id").(uuid.UUID)
-	var password models.Password
-
-	if err := database.DB.First(&password, c.Param("id")).Error; err != nil {
+	p, err := pwdRepo.GetByID(c.Param("id"))
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Password not found"})
 		return
 	}
 
-	if password.UserID != userID {
+	if p.UserID != userID {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized access"})
 		return
 	}
 
-	database.DB.Delete(&password)
+	if err := pwdRepo.Delete(p); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete password"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": true})
 }
