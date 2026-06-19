@@ -19,6 +19,14 @@ func SetupRouter() *gin.Engine {
 	pwdRepo := repository.NewPasswordRepository(database.DB)
 	handlers.InitHandlers(pwdRepo)
 	r := gin.Default()
+	authServiceURL := os.Getenv("AUTH_SERVICE_URL")
+	if authServiceURL == "" {
+		authServiceURL = "http://localhost:8081"
+	}
+	authProxy, err := handlers.NewAuthProxy(authServiceURL)
+	if err != nil {
+		panic("invalid AUTH_SERVICE_URL: " + err.Error())
+	}
 
 	// CORS Configuration
 	r.Use(cors.New(cors.Config{
@@ -58,12 +66,12 @@ func SetupRouter() *gin.Engine {
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+	r.POST("/api/register", authProxy)
+	r.POST("/api/login", authProxy)
+	r.POST("/api/forgot-password", authProxy)
+	r.POST("/api/reset-password", authProxy)
 
 	// Rute yang butuh otentikasi
-	authServiceURL := os.Getenv("AUTH_SERVICE_URL")
-	if authServiceURL == "" {
-		authServiceURL = "http://localhost:8081"
-	}
 	api := r.Group("/api")
 	api.Use(middleware.AuthMiddleware(authServiceURL, nil))
 	{
