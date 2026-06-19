@@ -46,7 +46,7 @@ func ConnectDB() {
 func migrateDatabase() {
 	log.Println("Migrating database...")
 
-	err := DB.AutoMigrate(&models.User{}, &models.Password{})
+	err := DB.AutoMigrate(&models.Password{})
 	if err != nil {
 		// Jika error tapi hanya karena tabel sudah ada, abaikan
 		if strings.Contains(err.Error(), "already exists") {

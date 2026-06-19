@@ -14,12 +14,10 @@ import (
 )
 
 var pwdRepo repository.PasswordRepository
-var userRepo repository.UserRepository
 
-// InitHandlers initializes handler-level dependencies (repository, etc.)
-func InitHandlers(p repository.PasswordRepository, u repository.UserRepository) {
+// InitHandlers initializes handler-level dependencies.
+func InitHandlers(p repository.PasswordRepository) {
 	pwdRepo = p
-	userRepo = u
 }
 
 // CreatePassword ...

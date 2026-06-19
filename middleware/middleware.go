@@ -1,68 +1,64 @@
 package middleware
 
 import (
-	"fmt"
+	"encoding/json"
 	"net/http"
-	"os"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 )
 
-func AuthMiddleware() gin.HandlerFunc {
+type validationResponse struct {
+	Valid  bool   `json:"valid"`
+	UserID string `json:"user_id"`
+}
+
+// AuthMiddleware delegates identity validation to handy-auth. Resource ownership
+// remains in this service because only it understands password-vault resources.
+func AuthMiddleware(authServiceURL string, client *http.Client) gin.HandlerFunc {
+	if client == nil {
+		client = &http.Client{Timeout: 3 * time.Second}
+	}
+	validateURL := strings.TrimRight(authServiceURL, "/") + "/api/auth/validate"
+
 	return func(c *gin.Context) {
-		tokenString := c.GetHeader("Authorization")
-		if tokenString == "" || !strings.HasPrefix(tokenString, "Bearer ") {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			c.Abort()
+		authorization := c.GetHeader("Authorization")
+		if authorization == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}
 
-		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
-
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return []byte(os.Getenv("JWT_SECRET")), nil
-		})
-
-		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			c.Abort()
-			return
-		}
-
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			c.Abort()
-			return
-		}
-
-		// Fix: Convert ke UUID
-		userIDClaim := claims["user_id"]
-		var userID uuid.UUID
-
-		// Handle different claim types
-		switch v := userIDClaim.(type) {
-		case string:
-			userID, err = uuid.Parse(v)
-		case float64:
-			// Convert float64 ke UUID (kalau JWT claim masih number)
-			userID, err = uuid.Parse(fmt.Sprintf("%.0f", v))
-		default:
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user_id format"})
-			c.Abort()
-			return
-		}
-
+		req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, validateURL, nil)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user_id"})
-			c.Abort()
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "authentication configuration error"})
+			return
+		}
+		req.Header.Set("Authorization", authorization)
+		response, err := client.Do(req)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "authentication service unavailable"})
+			return
+		}
+		defer response.Body.Close()
+
+		if response.StatusCode != http.StatusOK {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+		var result validationResponse
+		if json.NewDecoder(response.Body).Decode(&result) != nil || !result.Valid {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+		userID, err := uuid.Parse(result.UserID)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid user identity"})
 			return
 		}
 
-		c.Set("user_id", userID) // Set sebagai UUID
+		c.Set("user_id", userID)
 		c.Next()
 	}
 }

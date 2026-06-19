@@ -1,6 +1,8 @@
 package routers
 
 import (
+	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -15,8 +17,7 @@ func SetupRouter() *gin.Engine {
 	database.ConnectDB()
 	// initialize repositories and wire to handlers
 	pwdRepo := repository.NewPasswordRepository(database.DB)
-	userRepo := repository.NewUserRepository(database.DB)
-	handlers.InitHandlers(pwdRepo, userRepo)
+	handlers.InitHandlers(pwdRepo)
 	r := gin.Default()
 
 	// CORS Configuration
@@ -54,17 +55,17 @@ func SetupRouter() *gin.Engine {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Rute publik (Register, Login)
-	r.POST("/api/register", handlers.Register)
-	r.POST("/api/login", handlers.Login)
-
-	// Rute publik (ForgotPassword, ResetPassword)
-	r.POST("/api/forgot-password", handlers.ForgotPassword)
-	r.POST("/api/reset-password", handlers.ResetPassword)
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 
 	// Rute yang butuh otentikasi
+	authServiceURL := os.Getenv("AUTH_SERVICE_URL")
+	if authServiceURL == "" {
+		authServiceURL = "http://localhost:8081"
+	}
 	api := r.Group("/api")
-	api.Use(middleware.AuthMiddleware())
+	api.Use(middleware.AuthMiddleware(authServiceURL, nil))
 	{
 		api.POST("/passwords", handlers.CreatePassword)
 		api.GET("/passwords", handlers.GetPasswords)
